@@ -52,43 +52,17 @@ function remake(prob::ODEProblem; f = missing,
         tspan = prob.tspan
     end
 
-    if (p !== missing && eltype(p) <: Pair) || (u0 !== missing && eltype(u0) <: Pair)
-        defs = Dict{Any, Any}()
-        if hasproperty(prob.f, :sys)
-            if hasfield(typeof(prob.f.sys), :ps)
-                defs = mergedefaults(defs, prob.p, getfield(prob.f.sys, :ps))
-            end
-            if hasfield(typeof(prob.f.sys), :u0)
-                defs = mergedefaults(defs, prob.u0, getfield(prob.f.sys, :u0))
-            end
+    if p === missing && u0 === missing
+        p, u0 = prob.p, prob.u0
+    else # at least one of them has a value
+        if p === missing
+            p = prob.p
         end
-    else
-        defs = nothing
-    end
-
-    if p === missing
-        p = prob.p
-    else
-        if eltype(p) <: Pair
-            if hasproperty(prob.f, :sys) && hasfield(typeof(prob.f.sys), :ps)
-                p = handle_varmap(p, prob.f.sys, field = :ps, defaults = defs)
-                defs = mergedefaults(defs, p, getfield(prob.f.sys, :ps))
-            else
-                throw(ArgumentError("This problem does not support symbolic parameter maps with `remake`, i.e. it does not have a symbolic origin. Please use `remake` with the `p` keyword argument as a vector of values, paying attention to parameter order."))
-            end
+        if u0 === missing
+            u0 = prob.u0
         end
-    end
-
-    if u0 === missing
-        u0 = prob.u0
-    else
-        if eltype(u0) <: Pair
-            if hasproperty(prob.f, :sys) && hasfield(typeof(prob.f.sys), :states)
-                u0 = handle_varmap(u0, prob.f.sys, field = :states,
-                                   defaults = defs, tofloat = true)
-            else
-                throw(ArgumentError("This problem does not support symbolic default maps with `remake`, i.e. it does not have a symbolic origin. Please use `remake` with the `u0` keyword argument as a vector of values, paying attention to the order of states."))
-            end
+        if eltype(p) <: Pair || eltype(u0) <: Pair # one is a symbolic map
+            p, u0 = process_p_u0_symbolic(prob, p, u0)
         end
     end
 
