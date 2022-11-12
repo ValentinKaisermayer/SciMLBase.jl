@@ -42,6 +42,13 @@ function isrecompile(prob::ODEProblem{iip}) where {iip}
     (prob.f isa ODEFunction) ? !isfunctionwrapper(prob.f.f) : true
 end
 
+"""
+    remake(prob::ODEProblem; f = missing, u0 = missing, tspan = missing, 
+           p = missing, kwargs = missing, _kwargs...)
+
+Remake the given `ODEProblem`.
+If `u0` or `p` are given as symbolic maps `ModelingToolkit.jl` has to be loaded.
+"""
 function remake(prob::ODEProblem; f = missing,
                 u0 = missing,
                 tspan = missing,
@@ -62,6 +69,12 @@ function remake(prob::ODEProblem; f = missing,
             u0 = prob.u0
         end
         if eltype(p) <: Pair || eltype(u0) <: Pair # one is a symbolic map
+            hasproperty(prob.f, :sys) && hasfield(typeof(prob.f.sys), :ps) ||
+                throw(ArgumentError("This problem does not support symbolic maps with `remake`, i.e. it does not have a symbolic origin." *
+                                    " Please use `remake` with the `p` keyword argument as a vector of values, paying attention to parameter order."))
+            hasproperty(prob.f, :sys) && hasfield(typeof(prob.f.sys), :states) ||
+                throw(ArgumentError("This problem does not support symbolic maps with `remake`, i.e. it does not have a symbolic origin." *
+                                    " Please use `remake` with the `u0` keyword argument as a vector of values, paying attention to state order."))
             p, u0 = process_p_u0_symbolic(prob, p, u0)
         end
     end
